@@ -1,5 +1,5 @@
-"""Train wait-time regressor from synthetic data. Run once: python train.py"""
-import numpy as np, pandas as pd, joblib
+"""Train wait-time regressor from synthetic data (numpy only). Run once: python train.py"""
+import numpy as np, joblib
 from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_absolute_error, mean_squared_error
@@ -25,15 +25,12 @@ mult = np.vectorize(peak)(hour, dow)
 base = (tokens_ahead * avg_service) / np.maximum(active_counters, 1)
 wait = np.maximum(0, base * mult + rng.normal(0, 3, N))
 
-df = pd.DataFrame({
-    "tokens_ahead": tokens_ahead, "active_counters": active_counters,
-    "hour_of_day": hour, "day_of_week": dow,
-    "avg_service_time": avg_service, "recent_throughput": recent_throughput,
-    "wait_minutes": wait,
-})
-df.to_csv("synthetic_queue_data.csv", index=False)
+X = np.column_stack([
+    tokens_ahead, active_counters, hour, dow,
+    avg_service, recent_throughput,
+])
+y = wait
 
-X, y = df.drop(columns=["wait_minutes"]), df["wait_minutes"]
 Xtr, Xte, ytr, yte = train_test_split(X, y, test_size=0.2, random_state=42)
 
 m = RandomForestRegressor(n_estimators=200, max_depth=12, random_state=42, n_jobs=-1)
