@@ -9,4 +9,4 @@ services:
       - key: ML_API_KEY
         sync: false   # you'll set this in the Render dashboard
       - key: PYTHON_VERSION
-        value: 3.11.9
+        value: 3.11.9        # 👈 pin Python version
