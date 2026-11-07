@@ -4,8 +4,22 @@ from pydantic import BaseModel, Field
 import joblib, numpy as np
 
 ML_API_KEY = os.environ.get("ML_API_KEY", "")
+MODEL_PATH = "wait_time_model.pkl"
+
+# ─── Auto-train if model missing (fixes Render crash) ────────────────
+if not os.path.exists(MODEL_PATH):
+    print(f"[startup] {MODEL_PATH} not found — training now...")
+    import subprocess, sys
+    result = subprocess.run([sys.executable, "train.py"], capture_output=True, text=True)
+    print(result.stdout)
+    if result.returncode != 0:
+        print(result.stderr)
+        raise RuntimeError("Failed to train model on startup")
+    print(f"[startup] Model trained and saved to {MODEL_PATH}")
+
 app = FastAPI(title="Smart Queue ML", version="1.0.0")
-model = joblib.load("wait_time_model.pkl")
+model = joblib.load(MODEL_PATH)
+
 
 class QueueFeatures(BaseModel):
     tokens_ahead: int = Field(..., ge=0)
@@ -15,9 +29,11 @@ class QueueFeatures(BaseModel):
     avg_service_time: float = Field(..., ge=0)
     recent_throughput: int = Field(..., ge=0)
 
+
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "model_loaded": True}
+
 
 @app.post("/predict")
 def predict(f: QueueFeatures, x_api_key: str | None = Header(default=None)):
